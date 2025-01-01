@@ -170,8 +170,8 @@ def check_source(source):
 
     return source, webcam, screenshot, from_img, in_memory, tensor
 
-
-def load_inference_source(source=None, batch=1, vid_stride=1, buffer=False):
+##Moe##
+# def load_inference_source(source=None, batch=1, vid_stride=1, buffer=False):
     """
     Loads an inference source for object detection and applies necessary transformations.
 
@@ -200,6 +200,43 @@ def load_inference_source(source=None, batch=1, vid_stride=1, buffer=False):
         dataset = LoadPilAndNumpy(source)
     else:
         dataset = LoadImagesAndVideos(source, batch=batch, vid_stride=vid_stride)
+
+    # Attach source types to the dataset
+    setattr(dataset, "source_type", source_type)
+
+    return dataset
+def load_inference_source(rgb_source=None, ir_source=None, batch=1, vid_stride=1, buffer=False):
+    """
+    Loads an inference source for object detection and applies necessary transformations.
+
+    Args:
+        rgb_source (str, Path, Tensor, PIL.Image, np.ndarray): The input RGB source for inference.
+        ir_source (str, Path, Tensor, PIL.Image, np.ndarray): The input IR source for inference.
+        batch (int, optional): Batch size for dataloaders. Default is 1.
+        vid_stride (int, optional): The frame interval for video sources. Default is 1.
+        buffer (bool, optional): Determines whether stream frames will be buffered. Default is False.
+
+    Returns:
+        dataset (Dataset): A dataset object for the specified input source.
+    """
+    rgb_source, stream, screenshot, from_img, in_memory, tensor = check_source(rgb_source)
+    ir_source, _, _, _, _, _ = check_source(ir_source)  # Assuming check_source can be reused for IR source
+
+    source_type = rgb_source.source_type if in_memory else SourceTypes(stream, screenshot, from_img, tensor)
+
+    # Dataloader
+    if tensor:
+        dataset = LoadTensor(rgb_source)
+    elif in_memory:
+        dataset = rgb_source
+    elif stream:
+        dataset = LoadStreams(rgb_source, vid_stride=vid_stride, buffer=buffer)
+    elif screenshot:
+        dataset = LoadScreenshots(rgb_source)
+    elif from_img:
+        dataset = LoadPilAndNumpy(rgb_source)
+    else:
+        dataset = LoadImagesAndVideos(rgb_source, ir_source, batch=batch, vid_stride=vid_stride)
 
     # Attach source types to the dataset
     setattr(dataset, "source_type", source_type)
